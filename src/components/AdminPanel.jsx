@@ -15,13 +15,9 @@ export default function AdminPanel() {
     setUsers(data || [])
   }
 
-  async function deleteUser(userId) {
-    if (confirm('Delete user?')) {
-      await supabase.from('profiles').delete().eq('id', userId)
-      toast.success('User deleted')
-      fetchUsers()
-    }
-  }
+async function deleteUser(userId) {  // userId is UUID
+  await supabase.from('profiles').delete().eq('id', userId)
+}
 
   async function exportExcel() {
     const { data } = await supabase.from('time_logs').select('*, profiles(full_name, user_id)')
