@@ -3,7 +3,6 @@ import { supabase } from '../supabase'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext()
-
 export const useAuth = () => useContext(AuthContext)
 
 export const AuthProvider = ({ children }) => {
@@ -54,24 +53,18 @@ export const AuthProvider = ({ children }) => {
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role, gender, unique_number: uniqueNumber } }
+      options: {
+        data: {
+          full_name: fullName,
+          role: role,
+          gender: gender,
+          unique_number: uniqueNumber,
+          user_id: customUserId || uniqueNumber,
+          avatar_url: profileImage || null
+        }
+      }
     })
     if (authError) throw authError
-
-    const userId = authData.user.id
-    const finalDisplayUserId = customUserId || uniqueNumber
-
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: userId,
-      unique_number: uniqueNumber,
-      user_id: finalDisplayUserId,
-      full_name: fullName,
-      gender,
-      role,
-      avatar_url: profileImage || null,
-    })
-    if (profileError) throw profileError
-
     return authData
   }
 
