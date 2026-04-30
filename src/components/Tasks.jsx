@@ -8,6 +8,7 @@ export default function Tasks() {
   const [tasks, setTasks] = useState([])
   const [newTask, setNewTask] = useState({ title: '', description: '', type: 'Daily', due_date: '' })
   const [assignees, setAssignees] = useState([])
+  const [selectedAssignee, setSelectedAssignee] = useState('')  // ✅ store UUID of selected user
   const [showCreate, setShowCreate] = useState(false)
   const isAdminOrManager = ['Admin', 'Manager'].includes(profile?.role)
 
@@ -19,7 +20,7 @@ export default function Tasks() {
   async function fetchTasks() {
     let query = supabase.from('tasks').select('*')
     if (profile?.role === 'User') {
-      query = query.eq('assigned_to', user.id)
+      query = query.eq('assigned_to', user.id)  // ✅ user.id is UUID
     }
     const { data, error } = await query
     if (error) console.error(error)
@@ -29,17 +30,20 @@ export default function Tasks() {
   async function fetchUsers() {
     const { data } = await supabase.from('profiles').select('id, full_name, role').eq('role', 'User')
     setAssignees(data || [])
+    if (data && data.length > 0) setSelectedAssignee(data[0].id)  // ✅ pre-select first user (UUID)
   }
 
   async function createTask() {
     if (!newTask.title || !newTask.due_date) return toast.error('Title and due date required')
+    if (!selectedAssignee) return toast.error('Please select a user to assign this task')
+
     const { error } = await supabase.from('tasks').insert({
       title: newTask.title,
       description: newTask.description,
       type: newTask.type,
       due_date: newTask.due_date,
-      assigned_to: assignees[0]?.id, // simplified: assign to first user; in full UI add selector
-      created_by: user.id,
+      assigned_to: selectedAssignee,   // ✅ UUID of selected user
+      created_by: user.id,             // ✅ UUID of current user
       status: 'pending'
     })
     if (error) toast.error(error.message)
@@ -94,9 +98,18 @@ export default function Tasks() {
               <option>Daily</option><option>Monthly</option>
             </select>
             <input type="date" value={newTask.due_date} onChange={e => setNewTask({...newTask, due_date: e.target.value})} className="w-full p-2 border rounded mb-2" />
-            <select className="w-full p-2 border rounded mb-4">
-              {assignees.map(u => <option key={u.id}>{u.full_name}</option>)}
+            
+            {/* ✅ Assignee dropdown with proper UUID value */}
+            <select 
+              value={selectedAssignee} 
+              onChange={e => setSelectedAssignee(e.target.value)} 
+              className="w-full p-2 border rounded mb-4"
+            >
+              {assignees.map(u => (
+                <option key={u.id} value={u.id}>{u.full_name}</option>
+              ))}
             </select>
+
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowCreate(false)} className="px-4 py-2 bg-gray-500 text-white rounded">Cancel</button>
               <button onClick={createTask} className="px-4 py-2 bg-blue-600 text-white rounded">Create</button>
