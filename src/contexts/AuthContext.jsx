@@ -32,7 +32,6 @@ export const AuthProvider = ({ children }) => {
     return () => subscription?.unsubscribe()
   }, [])
 
-  // ─── Fetch Profile ──────────────────────────────────────────────────────────
   const fetchProfile = async (userId) => {
     const { data, error } = await supabase
       .from('profiles')
@@ -43,9 +42,7 @@ export const AuthProvider = ({ children }) => {
     else setProfile(data)
   }
 
-  // ─── LOGIN ──────────────────────────────────────────────────────────────────
-  // User types their Unique Number + password.
-  // We call a Supabase RPC to look up their real email, then sign in with it.
+  // Login: look up real email by unique number, then sign in
   const login = async (uniqueNumber, password) => {
     const { data: email, error: lookupError } = await supabase
       .rpc('get_email_by_unique_number', { p_unique_number: uniqueNumber })
@@ -58,15 +55,14 @@ export const AuthProvider = ({ children }) => {
     if (signInError) throw signInError
   }
 
-  // ─── REGISTER ───────────────────────────────────────────────────────────────
-  // Accepts the user's real email. Supabase will send a verification email to it.
+  // Register: pass real email — Supabase trigger auto-creates the profile row
   const register = async ({
     uniqueNumber,
     fullName,
     gender,
     password,
     role,
-    email,          // real email — used for verification & password reset
+    email,
     customUserId,
     profileImage,
   }) => {
@@ -86,28 +82,12 @@ export const AuthProvider = ({ children }) => {
     })
     if (authError) throw authError
 
-    // Store profile with email so the login RPC can find it
-    if (authData.user) {
-      const { error: profileError } = await supabase.from('profiles').upsert({
-        id:            authData.user.id,
-        unique_number: uniqueNumber,
-        user_id:       customUserId || uniqueNumber,
-        full_name:     fullName,
-        gender,
-        role,
-        email,
-        avatar_url:    profileImage || null,
-      })
-      if (profileError) console.error('Profile upsert error:', profileError)
-    }
-
+    // ✅ No manual profile insert needed — the DB trigger handles it automatically
     return authData
   }
 
-  // ─── LOGOUT ─────────────────────────────────────────────────────────────────
   const logout = async () => supabase.auth.signOut()
 
-  // ─── UPDATE PROFILE ─────────────────────────────────────────────────────────
   const updateProfile = async (updates) => {
     const { error } = await supabase.from('profiles').update(updates).eq('id', user.id)
     if (error) throw error
@@ -115,15 +95,12 @@ export const AuthProvider = ({ children }) => {
     toast.success('Profile updated')
   }
 
-  // ─── CHANGE PASSWORD ────────────────────────────────────────────────────────
   const changePassword = async (_oldPassword, newPassword) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword })
     if (error) throw error
     toast.success('Password changed')
   }
 
-  // ─── FORGOT PASSWORD ────────────────────────────────────────────────────────
-  // Sends a reset link to the user's real email — no fake domain needed.
   const forgotPassword = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email)
     if (error) throw error
