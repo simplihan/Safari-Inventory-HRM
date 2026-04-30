@@ -1,3 +1,7 @@
+"dependencies": {
+  "@supabase/supabase-js": "^2.39.0",
+  // ... other packages
+}
 {
   "name": "hrm-app",
   "version": "1.0.0",
