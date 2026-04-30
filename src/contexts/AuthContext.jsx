@@ -43,7 +43,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (uniqueNumber, password) => {
-    const email = `${uniqueNumber}@safari.local`
+    const email = `${uniqueNumber}@gmail.com`
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   }
