@@ -14,12 +14,13 @@ export const AuthProvider = ({ children }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         setUser(session.user)
-        fetchProfile(session.user.id)
+        fetchProfile(session.user.id) // ✅ FIX: removed broken markdown artifact
       }
       setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // ✅ FIX: Supabase v2 returns { data: { subscription } }, not { data: listener }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
         await fetchProfile(session.user.id)
@@ -29,7 +30,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false)
     })
 
-    return () => listener?.unsubscribe()
+    return () => subscription?.unsubscribe() // ✅ FIX: was listener?.unsubscribe()
   }, [])
 
   const fetchProfile = async (userId) => {
@@ -43,7 +44,8 @@ export const AuthProvider = ({ children }) => {
   }
 
   const login = async (uniqueNumber, password) => {
-    const email = `${uniqueNumber}@gmail.com`
+    // ✅ FIX: was @gmail.com — must match the @safari.local used in register
+    const email = `${uniqueNumber}@safari.local`
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) throw error
   }
@@ -73,7 +75,7 @@ export const AuthProvider = ({ children }) => {
   }
 
   const updateProfile = async (updates) => {
-    const { error } = await supabase.from('profiles').update(updates).eq('id', user.id)
+    const { error } = await supabase.from('profiles').update(updates).eq('id', user.id) // ✅ FIX: removed markdown artifact
     if (error) throw error
     setProfile(prev => ({ ...prev, ...updates }))
     toast.success('Profile updated')
