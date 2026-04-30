@@ -23,9 +23,8 @@ export default function Dashboard() {
     setLoading(true)
     // Get all profiles with latest status & today's totals
     const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('*')
-    if (error) console.error(error)
+  .from('profiles')
+  .select('id, full_name, user_id, gender, role, avatar_url')  // ✅ add user_id
 
     const today = new Date().toISOString().split('T')[0]
     const enhanced = await Promise.all(profiles.map(async (u) => {
