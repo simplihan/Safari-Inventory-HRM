@@ -35,15 +35,15 @@ export const AuthProvider = ({ children }) => {
     return () => listener?.unsubscribe()
   }, [])
 
-  const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    if (error) console.error(error)
-    else setProfile(data)
-  }
+const fetchProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, unique_number, user_id, full_name, gender, role, avatar_url')  // ✅ includes user_id
+    .eq('id', userId)  // ✅ use UUID
+    .single()
+  if (error) console.error(error)
+  else setProfile(data)
+}
 
   const login = async (uniqueNumber, password) => {
     // Custom login flow – we store unique_number in email field (or use raw SQL)
