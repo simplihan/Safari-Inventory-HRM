@@ -1,32 +1,7 @@
-import React, { useRef, useState } from 'react';   // ← ADD THIS
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
-
-const Label = ({ children }) => (
-  <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#1e293b' }}>
-    {children}
-  </label>
-);
-
-const Input = React.forwardRef(({ label, type = 'text', placeholder, required, ...props }, ref) => (
-  <div style={{ marginBottom: 20 }}>
-    {label && <Label>{label} {required && '*'}</Label>}
-    <input
-      ref={ref}
-      type={type}
-      placeholder={placeholder}
-      style={{
-        width: '100%', padding: '12px 14px', borderRadius: 12,
-        border: '1px solid #cbd5e1', fontSize: 14,
-        outline: 'none', boxSizing: 'border-box'
-      }}
-      onFocus={(e) => e.target.style.borderColor = '#6366f1'}
-      onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-      {...props}
-    />
-  </div>
-));
 
 export default function Login() {
   const { login } = useAuth();
@@ -52,34 +27,112 @@ export default function Login() {
     }
   };
 
+  // ---------- ONLY DESIGN CHANGES BELOW ----------
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f5f7fa 0%, #e9eef5 100%)', padding: '24px'
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'radial-gradient(circle at 10% 30%, #1a1a2e, #16213e)',
+      fontFamily: "'Poppins', sans-serif",
+      padding: '20px'
     }}>
       <div style={{
-        maxWidth: 440, width: '100%', background: 'white', borderRadius: 32,
-        boxShadow: '0 20px 35px -10px rgba(0,0,0,0.1)', padding: '40px 32px'
+        background: 'rgba(255,255,255,0.08)',
+        backdropFilter: 'blur(12px)',
+        borderRadius: '24px',
+        padding: '40px 32px',
+        width: '100%',
+        maxWidth: '440px',
+        border: '1px solid rgba(255,255,255,0.2)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.2)'
       }}>
-        <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: '#0f172a', textAlign: 'center' }}>Login Account</h2>
+        <h2 style={{
+          fontSize: '32px',
+ fontWeight: '700',
+          background: 'linear-gradient(135deg, #e0eafc, #cfdef3)',
+          WebkitBackgroundClip: 'text',
+          backgroundClip: 'text',
+          color: 'transparent',
+          textAlign: 'center',
+          marginBottom: '8px'
+        }}>Welcome Back</h2>
+        <p style={{ color: '#a0aec0', textAlign: 'center', marginBottom: '32px' }}>Sign in to your account</p>
+
         <form onSubmit={handleSubmit}>
-          <Input ref={emailRef} label="Email Address" type="email" placeholder="hello@example.com" required />
-          <Input ref={passwordRef} label="Password" type="password" placeholder="••••••••" required />
-          <div style={{ textAlign: 'right', marginBottom: 24 }}>
-            <Link to="/forgot-password" style={{ fontSize: 13, color: '#6366f1', textDecoration: 'none' }}>Forgot Password?</Link>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#cbd5e0', fontSize: '14px' }}>Email Address</label>
+            <input
+              ref={emailRef}
+              type="email"
+              required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid #2d3748',
+                background: '#1a202c',
+                color: 'white',
+                fontSize: '14px',
+                outline: 'none',
+                transition: '0.2s'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#4299e1'}
+              onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+            />
           </div>
-          <button type="submit" disabled={isLoading} style={{
-            width: '100%', padding: '14px', borderRadius: 40, border: 'none',
-            background: '#6366f1', color: 'white', fontWeight: 600, fontSize: 15,
-            cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1
-          }}>
-            {isLoading ? 'Logging in...' : 'Login Account'}
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', color: '#cbd5e0', fontSize: '14px' }}>Password</label>
+            <input
+              ref={passwordRef}
+              type="password"
+              required
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                borderRadius: '12px',
+                border: '1px solid #2d3748',
+                background: '#1a202c',
+                color: 'white',
+                fontSize: '14px',
+                outline: 'none'
+              }}
+              onFocus={(e) => e.target.style.borderColor = '#4299e1'}
+              onBlur={(e) => e.target.style.borderColor = '#2d3748'}
+            />
+          </div>
+
+          <div style={{ textAlign: 'right', marginBottom: '28px' }}>
+            <Link to="/forgot-password" style={{ color: '#63b3ed', textDecoration: 'none', fontSize: '13px' }}>Forgot Password?</Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            style={{
+              width: '100%',
+              padding: '12px',
+              borderRadius: '40px',
+              border: 'none',
+              background: 'linear-gradient(135deg, #4299e1, #3182ce)',
+              color: 'white',
+              fontWeight: '600',
+              fontSize: '16px',
+              cursor: isLoading ? 'not-allowed' : 'pointer',
+              opacity: isLoading ? 0.7 : 1,
+              transition: '0.2s'
+            }}
+          >
+            {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
-        <div style={{ textAlign: 'center', marginTop: 28, fontSize: 14, color: '#475569' }}>
-          Don't Have an Account?{' '}
-          <Link to="/register" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 500 }}>Create Account</Link>
-        </div>
+
+        <p style={{ textAlign: 'center', marginTop: '28px', color: '#a0aec0', fontSize: '14px' }}>
+          Don't have an account?{' '}
+          <Link to="/register" style={{ color: '#63b3ed', textDecoration: 'none', fontWeight: '500' }}>Create Account</Link>
+        </p>
       </div>
     </div>
   );
