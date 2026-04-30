@@ -1,314 +1,253 @@
-import { useRef, useState, memo, useEffect } from 'react'
-import { useAuth } from '../contexts/AuthContext'
-import { Link, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
+import { useRef, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
-// Neon Label Component
-const NeonLabel = ({ children }) => (
-  <label style={{
-    color: '#0ff',
-    fontSize: 11,
-    fontWeight: 600,
-    display: 'block',
-    marginBottom: 5,
-    textTransform: 'uppercase',
-    letterSpacing: '0.15em',
-    textShadow: '0 0 5px #0ff, 0 0 10px #0ff',
-    fontFamily: "'Orbitron', 'DM Sans', monospace",
-  }}>{children}</label>
-)
+// ---------- Helper Components ----------
+const StepIndicator = ({ current, total, labels }) => (
+  <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginBottom: 32 }}>
+    {Array.from({ length: total }).map((_, i) => (
+      <div key={i} style={{ textAlign: 'center' }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: i <= current ? '#6366f1' : '#e2e8f0',
+          color: i <= current ? 'white' : '#64748b',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontWeight: 'bold', transition: '0.2s'
+        }}>{i + 1}</div>
+        <div style={{ fontSize: 10, marginTop: 4, color: '#475569' }}>{labels[i]}</div>
+      </div>
+    ))}
+  </div>
+);
 
-const ROLES = ['Staff', 'Manager', 'Admin']
-const GENDERS = ['Male', 'Female', 'Other']
+const Label = ({ children }) => (
+  <label style={{ display: 'block', marginBottom: 6, fontWeight: 500, color: '#1e293b' }}>
+    {children}
+  </label>
+);
 
-export default memo(function Register() {
-  const { register } = useAuth()
-  const navigate = useNavigate()
-  const [isLoading, setIsLoading] = useState(false)
+const Input = React.forwardRef(({ label, type = 'text', placeholder, required, ...props }, ref) => (
+  <div style={{ marginBottom: 20 }}>
+    {label && <Label>{label} {required && '*'}</Label>}
+    <input
+      ref={ref}
+      type={type}
+      placeholder={placeholder}
+      style={{
+        width: '100%', padding: '12px 14px', borderRadius: 12,
+        border: '1px solid #cbd5e1', fontSize: 14,
+        outline: 'none', transition: '0.2s', boxSizing: 'border-box'
+      }}
+      onFocus={(e) => e.target.style.borderColor = '#6366f1'}
+      onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+      {...props}
+    />
+  </div>
+));
 
-  const refs = {
-    uniqueNumber: useRef(),
-    customUserId: useRef(),
-    fullName: useRef(),
-    email: useRef(),
-    gender: useRef(),
-    role: useRef(),
-    password: useRef(),
-    confirmPassword: useRef(),
-  }
+// ---------- Main Component ----------
+export default function Register() {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const [step, setStep] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [verificationMethod, setVerificationMethod] = useState('email');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    const get = (field) => refs[field]?.current?.value || ''
-    const data = {
-      uniqueNumber: get('uniqueNumber'),
-      fullName: get('fullName'),
-      email: get('email'),
-      password: get('password'),
-      confirmPassword: get('confirmPassword'),
-      gender: get('gender') || 'Male',
-      role: get('role') || 'Staff',
-      customUserId: get('customUserId'),
+  // Refs for all inputs (uncontrolled = no re‑render on type)
+  const fullNameRef = useRef();
+  const emailRef = useRef();
+  const dayRef = useRef();
+  const monthRef = useRef();
+  const yearRef = useRef();
+  const usernameRef = useRef();
+  const passwordRef = useRef();
+  const verifyContactRef = useRef();
+
+  // Birthday helpers
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+  ];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - i);
+
+  // Step validation
+  const validateStep = () => {
+    if (step === 0) {
+      const fullName = fullNameRef.current?.value.trim();
+      const email = emailRef.current?.value.trim();
+      if (!fullName) { toast.error('Full name required'); return false; }
+      if (!email || !email.includes('@')) { toast.error('Valid email required'); return false; }
+      return true;
     }
+    if (step === 1) {
+      const username = usernameRef.current?.value.trim();
+      const password = passwordRef.current?.value;
+      if (!username) { toast.error('Username required'); return false; }
+      if (!password || password.length < 6) { toast.error('Password must be at least 6 characters'); return false; }
+      return true;
+    }
+    if (step === 2) {
+      const contact = verifyContactRef.current?.value.trim();
+      if (!contact) { toast.error(`${verificationMethod === 'email' ? 'Email' : 'Phone number'} required`); return false; }
+      if (verificationMethod === 'email' && !contact.includes('@')) {
+        toast.error('Valid email address required');
+        return false;
+      }
+      return true;
+    }
+    return true;
+  };
 
-    if (!data.uniqueNumber) return toast.error('Unique number required')
-    if (!data.fullName) return toast.error('Full name required')
-    if (!data.email.includes('@')) return toast.error('Valid email required')
-    if (data.password.length < 6) return toast.error('Password must be at least 6 characters')
-    if (data.password !== data.confirmPassword) return toast.error('Passwords do not match')
+  const nextStep = () => {
+    if (validateStep()) setStep(s => s + 1);
+  };
 
-    setIsLoading(true)
+  const prevStep = () => setStep(s => s - 1);
+
+  // Final registration after sending code
+  const sendCodeAndRegister = async () => {
+    if (!validateStep()) return;
+
+    const contactValue = verifyContactRef.current?.value.trim();
+    setIsLoading(true);
+
+    // Simulate sending verification code (mock)
+    toast.success(`Verification code sent to ${contactValue} (mock)`);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Prepare registration data
+    const birthday = `${dayRef.current?.value || '1'} ${months[monthRef.current?.value - 1] || 'Jan'} ${yearRef.current?.value || currentYear}`;
+    const userData = {
+      fullName: fullNameRef.current?.value.trim(),
+      email: emailRef.current?.value.trim(),
+      username: usernameRef.current?.value.trim(),
+      password: passwordRef.current?.value,
+      birthday,
+      verificationContact: contactValue,
+      uniqueNumber: `USR-${Date.now()}`,
+      role: 'Staff',               // default role
+      gender: 'Other',             // not collected in this form
+      customUserId: usernameRef.current?.value.trim(),
+    };
+
     try {
-      await register({
-        ...data,
-        customUserId: data.customUserId || data.uniqueNumber,
-      })
-      toast.success('Account created! Verify your email.')
-      navigate('/login')
+      await register(userData);  // your existing auth function
+      toast.success('Account created! Check your email to verify.');
+      navigate('/login');
     } catch (err) {
-      toast.error(err.message)
+      toast.error(err.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
-
-  // Dynamic particle background effect
-  useEffect(() => {
-    const canvas = document.getElementById('neon-bg')
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    let animationId
-    let particles = []
-
-    const resize = () => {
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-    }
-    window.addEventListener('resize', resize)
-    resize()
-
-    class Particle {
-      constructor() {
-        this.x = Math.random() * canvas.width
-        this.y = Math.random() * canvas.height
-        this.size = Math.random() * 2 + 1
-        this.speedX = (Math.random() - 0.5) * 1.5
-        this.speedY = (Math.random() - 0.5) * 1.5
-        this.color = `hsl(${Math.random() * 60 + 180}, 100%, 60%)` // cyan/blue/neon green
-      }
-      update() {
-        this.x += this.speedX
-        this.y += this.speedY
-        if (this.x < 0) this.x = canvas.width
-        if (this.x > canvas.width) this.x = 0
-        if (this.y < 0) this.y = canvas.height
-        if (this.y > canvas.height) this.y = 0
-      }
-      draw() {
-        ctx.beginPath()
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2)
-        ctx.fillStyle = this.color
-        ctx.shadowBlur = 10
-        ctx.shadowColor = this.color
-        ctx.fill()
-      }
-    }
-
-    for (let i = 0; i < 100; i++) particles.push(new Particle())
-
-    const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.shadowBlur = 0
-      particles.forEach(p => {
-        p.update()
-        p.draw()
-      })
-      animationId = requestAnimationFrame(animate)
-    }
-    animate()
-
-    return () => {
-      cancelAnimationFrame(animationId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  const neonInputStyle = (hasError = false) => ({
-    background: 'rgba(0, 0, 0, 0.7)',
-    border: hasError ? '1px solid #f0f' : '1px solid rgba(0, 255, 255, 0.5)',
-    borderRadius: 8,
-    padding: '12px 14px',
-    color: '#0ff',
-    fontSize: 14,
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box',
-    fontFamily: "'Share Tech Mono', 'DM Sans', monospace",
-    transition: 'all 0.2s ease',
-    boxShadow: hasError ? '0 0 10px #f0f' : '0 0 5px rgba(0, 255, 255, 0.3)',
-  })
-
-  const neonSelectStyle = {
-    ...neonInputStyle(),
-    appearance: 'none',
-    background: '#0a0f1a',
-    color: '#0ff',
-    cursor: 'pointer',
-  }
+  };
 
   return (
-    <>
-      {/* Canvas for particles */}
-      <canvas id="neon-bg" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 0 }} />
-
+    <div style={{
+      minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: 'linear-gradient(135deg, #f5f7fa 0%, #e9eef5 100%)',
+      fontFamily: "'Inter', system-ui, sans-serif", padding: '24px'
+    }}>
       <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        zIndex: 1,
-        padding: '32px 20px',
-        fontFamily: "'Orbitron', 'DM Sans', sans-serif",
+        maxWidth: 500, width: '100%', background: 'white', borderRadius: 32,
+        boxShadow: '0 20px 35px -10px rgba(0,0,0,0.1)', padding: '32px 28px'
       }}>
-        {/* Neon card with animated border glow */}
-        <div style={{
-          background: 'rgba(5, 10, 20, 0.75)',
-          backdropFilter: 'blur(12px)',
-          borderRadius: 24,
-          border: '1px solid rgba(0, 255, 255, 0.3)',
-          boxShadow: '0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.2), inset 0 0 20px rgba(0, 255, 255, 0.05)',
-          padding: '40px 36px',
-          width: '100%',
-          maxWidth: 500,
-          transition: 'box-shadow 0.3s ease',
-          animation: 'pulseGlow 3s infinite alternate',
-        }}>
-          <style>{`
-            @keyframes pulseGlow {
-              0% { box-shadow: 0 0 10px rgba(0, 255, 255, 0.3), 0 0 20px rgba(0, 255, 255, 0.2); border-color: rgba(0, 255, 255, 0.3); }
-              100% { box-shadow: 0 0 30px rgba(0, 255, 255, 0.7), 0 0 60px rgba(0, 255, 255, 0.5); border-color: rgba(0, 255, 255, 0.8); }
-            }
-            @keyframes textPulse {
-              0% { text-shadow: 0 0 2px #0ff, 0 0 5px #0ff; }
-              100% { text-shadow: 0 0 8px #0ff, 0 0 15px #0ff; }
-            }
-            input:focus, select:focus {
-              border-color: #f0f !important;
-              box-shadow: 0 0 15px #f0f !important;
-              color: #fff !important;
-            }
-            button:hover {
-              transform: scale(1.02);
-              filter: brightness(1.1);
-            }
-          `}</style>
+        <StepIndicator current={step} total={3} labels={['Create', 'Security', 'Verify']} />
 
-          {/* Brand with neon flicker */}
-          <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <div style={{
-              width: 64, height: 64, borderRadius: 16, margin: '0 auto 14px', fontSize: 32,
-              background: 'linear-gradient(135deg, #0ff, #f0f)',
-              boxShadow: '0 0 20px #0ff, 0 0 40px #f0f',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              animation: 'pulseGlow 1.5s infinite alternate',
-            }}>⚡</div>
-            <h1 style={{
-              fontFamily: "'Orbitron', monospace",
-              fontSize: 28,
-              fontWeight: 800,
-              background: 'linear-gradient(135deg, #0ff, #f0f)',
-              WebkitBackgroundClip: 'text',
-              backgroundClip: 'text',
-              color: 'transparent',
-              margin: 0,
-              letterSpacing: '-0.02em',
-              textShadow: '0 0 10px rgba(0,255,255,0.5)',
-            }}>NEON REGISTER</h1>
-            <p style={{ color: '#0ff', fontSize: 12, marginTop: 5, textShadow: '0 0 5px #0ff' }}>⚡ ELECTRO SYSTEM v2.0 ⚡</p>
-          </div>
+        {/* Step 0 – Create Account */}
+        {step === 0 && (
+          <>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: '#0f172a' }}>Create Account</h2>
+            <Input ref={fullNameRef} label="Full Name" placeholder="John Doe" required />
+            <Input ref={emailRef} label="Email Address" type="email" placeholder="hello@example.com" required />
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Row Unique + User ID */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <NeonLabel>⚡ UNIQUE NUMBER *</NeonLabel>
-                <input type="text" ref={refs.uniqueNumber} style={neonInputStyle()} placeholder="e.g. SHR-001" />
-              </div>
-              <div>
-                <NeonLabel>🔮 USER ID (optional)</NeonLabel>
-                <input type="text" ref={refs.customUserId} style={neonInputStyle()} placeholder="Auto fills" />
+            <Label>Birthday</Label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', gap: 12, marginBottom: 28 }}>
+              <select ref={dayRef} style={selectStyle()} defaultValue="1">
+                {days.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <select ref={monthRef} style={selectStyle()} defaultValue="1">
+                {months.map((m, idx) => <option key={m} value={idx+1}>{m}</option>)}
+              </select>
+              <select ref={yearRef} style={selectStyle()} defaultValue={currentYear}>
+                {years.map(y => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+
+            <button onClick={nextStep} style={buttonStyle(true)}>Next →</button>
+            <div style={{ textAlign: 'center', marginTop: 20, fontSize: 14, color: '#475569' }}>
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#6366f1', textDecoration: 'none', fontWeight: 500 }}>Login to Account</Link>
+            </div>
+          </>
+        )}
+
+        {/* Step 1 – Security */}
+        {step === 1 && (
+          <>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: '#0f172a' }}>Security</h2>
+            <Input ref={usernameRef} label="Username" placeholder="Username1234" required />
+            <Input ref={passwordRef} label="Set Password" type="password" placeholder="At least 6 characters" required />
+
+            <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+              <button onClick={prevStep} style={buttonStyle(false)}>Back</button>
+              <button onClick={nextStep} style={buttonStyle(true)}>Next →</button>
+            </div>
+          </>
+        )}
+
+        {/* Step 2 – Verification */}
+        {step === 2 && (
+          <>
+            <h2 style={{ fontSize: 24, fontWeight: 700, marginBottom: 24, color: '#0f172a' }}>Verification</h2>
+            <div style={{ marginBottom: 20 }}>
+              <Label>Verify via</Label>
+              <div style={{ display: 'flex', gap: 20 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="radio" name="method" value="email" checked={verificationMethod === 'email'}
+                         onChange={() => setVerificationMethod('email')} /> Email
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="radio" name="method" value="phone" checked={verificationMethod === 'phone'}
+                         onChange={() => setVerificationMethod('phone')} /> Phone
+                </label>
               </div>
             </div>
 
-            {/* Full Name */}
-            <div>
-              <NeonLabel>👤 FULL NAME *</NeonLabel>
-              <input type="text" ref={refs.fullName} style={neonInputStyle()} placeholder="Your neon identity" />
+            <Input
+              ref={verifyContactRef}
+              label={verificationMethod === 'email' ? 'Email Address' : 'Phone Number'}
+              type={verificationMethod === 'email' ? 'email' : 'tel'}
+              placeholder={verificationMethod === 'email' ? 'you@example.com' : '12345678910'}
+              required
+            />
+
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={prevStep} style={buttonStyle(false)}>Back</button>
+              <button onClick={sendCodeAndRegister} disabled={isLoading} style={buttonStyle(true)}>
+                {isLoading ? 'Sending...' : 'Send Code →'}
+              </button>
             </div>
-
-            {/* Email */}
-            <div>
-              <NeonLabel>📧 EMAIL *</NeonLabel>
-              <input type="email" ref={refs.email} style={neonInputStyle()} placeholder="cyber@neon.com" />
-            </div>
-
-            {/* Gender + Role */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <NeonLabel>⚥ GENDER *</NeonLabel>
-                <select ref={refs.gender} style={neonSelectStyle} defaultValue="Male">
-                  {GENDERS.map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-              </div>
-              <div>
-                <NeonLabel>🎭 ROLE *</NeonLabel>
-                <select ref={refs.role} style={neonSelectStyle} defaultValue="Staff">
-                  {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <NeonLabel>🔒 PASSWORD *</NeonLabel>
-              <input type="password" ref={refs.password} style={neonInputStyle()} placeholder="•••••• (min 6 chars)" />
-            </div>
-
-            <div>
-              <NeonLabel>🔁 CONFIRM PASSWORD *</NeonLabel>
-              <input type="password" ref={refs.confirmPassword} style={neonInputStyle()} placeholder="repeat password" />
-            </div>
-
-            <button type="submit" disabled={isLoading} style={{
-              background: 'linear-gradient(135deg, #0ff, #f0f)',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: 16,
-              padding: '14px',
-              borderRadius: 40,
-              border: 'none',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              marginTop: 8,
-              fontFamily: "'Orbitron', monospace",
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              transition: 'all 0.2s',
-              boxShadow: '0 0 15px #0ff, 0 0 30px #f0f',
-              opacity: isLoading ? 0.6 : 1,
-            }}>
-              {isLoading ? '⚡ CHARGING... ⚡' : '⚡ ACTIVATE ACCOUNT ⚡'}
-            </button>
-          </form>
-
-          <p style={{ textAlign: 'center', marginTop: 24, color: '#0ff', fontSize: 12, textShadow: '0 0 4px #0ff' }}>
-            Already have a cipher?{' '}
-            <Link to="/login" style={{ color: '#f0f', textDecoration: 'none', fontWeight: 'bold', textShadow: '0 0 5px #f0f' }}>
-              LOGIN →
-            </Link>
-          </p>
-        </div>
+          </>
+        )}
       </div>
-    </>
-  )
-})
+    </div>
+  );
+}
+
+// Reusable style for selects
+const selectStyle = () => ({
+  width: '100%', padding: '12px 10px', borderRadius: 12,
+  border: '1px solid #cbd5e1', background: 'white', fontSize: 14,
+  outline: 'none', cursor: 'pointer'
+});
+
+const buttonStyle = (primary) => ({
+  flex: 1, padding: '12px', borderRadius: 40, border: 'none',
+  background: primary ? '#6366f1' : '#f1f5f9',
+  color: primary ? 'white' : '#334155',
+  fontWeight: 600, fontSize: 14, cursor: 'pointer',
+  transition: '0.2s', boxShadow: primary ? '0 2px 8px rgba(99,102,241,0.3)' : 'none'
+});
