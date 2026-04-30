@@ -57,34 +57,35 @@ export const AuthProvider = ({ children }) => {
   }
 
   const register = async (uniqueNumber, fullName, gender, password, role, customUserId, profileImage) => {
-    const email = `${uniqueNumber}@safari.local`
-    // Create auth user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, role, gender, unique_number: uniqueNumber }
-      }
-    })
-    if (authError) throw authError
+  const email = `${uniqueNumber}@safari.local`
+  // Create auth user
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      data: { full_name: fullName, role, gender, unique_number: uniqueNumber }
+    }
+  })
+  if (authError) throw authError
 
-    const userId = authData.user.id
-    const finalUserId = customUserId || uniqueNumber
+  const userId = authData.user.id  // ✅ this is the UUID from auth.users
 
-    // Create profile
-    const { error: profileError } = await supabase.from('profiles').insert({
-      id: userId,
-      unique_number: uniqueNumber,
-      user_id: finalUserId,
-      full_name: fullName,
-      gender,
-      role,
-      avatar_url: profileImage || null,
-    })
-    if (profileError) throw profileError
+  const finalDisplayUserId = customUserId || uniqueNumber
 
-    return authData
-  }
+  // Insert into profiles table using the UUID as 'id'
+  const { error: profileError } = await supabase.from('profiles').insert({
+    id: userId,                     // ✅ UUID
+    unique_number: uniqueNumber,
+    user_id: finalDisplayUserId,    // ✅ display text ID
+    full_name: fullName,
+    gender,
+    role,
+    avatar_url: profileImage || null,
+  })
+  if (profileError) throw profileError
+
+  return authData
+}
 
   const logout = async () => {
     await supabase.auth.signOut()
